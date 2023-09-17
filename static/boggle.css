@@ -1,0 +1,56 @@
+#boggle {
+     display: flex;
+     flex-direction: column;
+     justify-content: center;
+     align-items: center;
+     height: 100vh;
+     background-image: linear-gradient(to bottom, #3498db, #e2a82b);
+}
+
+.board {
+     border: solid 1px white;
+     font-family: monospace;
+     font-weight: bold;
+     font-size: 200%;
+     margin-bottom: 20px;
+}
+
+.board td {
+     text-align: center;
+     width: 1.5em;
+     height: 1.5em;
+}
+
+.msg {
+     padding: 1em;
+     background-color: rgb(234, 157, 16);
+     border-radius: 10px;
+}
+
+.msg.ok {
+     color: white;
+     background-color: rgb(107, 205, 107);
+     border-radius: 10px;
+}
+
+.msg.err {
+     color: white;
+     background-color: tomato;
+     border-radius: 10px;
+}
+
+.form-control:focus {
+     border-color: #007bff;
+     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.add-word,.info {
+     display: flex;
+     flex-direction: column;
+     justify-content: center;
+     align-items: center;
+}
+
+.add-word .btn {
+     margin-top: 10px;
+}
