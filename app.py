@@ -1,60 +1,77 @@
-# Import necessary modules and classes
+from unittest import TestCase
+from app import app
+from flask import session
 from boggle import Boggle
-from flask import Flask, render_template, request, session, jsonify
-import secrets
 
-# Create an instance of the Boggle game
-boggle_game = Boggle()
-
-# Generate a random 64-character hexadecimal string for the secret key
-SECRET_KEY = secrets.token_hex(32)
+# Subclass TestCase to create a test class
 
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = SECRET_KEY
+class FlaskTests(TestCase):
 
+    def setUp(self):
+        """Stuff to do before every test."""
 
-@app.route("/")
-def home_page():
-    """Render the home page."""
+        self.client = app.test_client()  # Create a test client
+        app.config['TESTING'] = True  # Set the app to testing mode
 
-    # Generate a new Boggle board and store it in the session
-    board = boggle_game.make_board()
-    session["board"] = board
+    def test_homepage(self):
+        """Make sure information is in the session and HTML is displayed"""
 
-    # Retrieve the high score and number of plays from the session, default to 0 if not present
-    highscore = session.get("highscore", 0)
-    numplays = session.get("numplays", 0)
+        # Use the test client to send a GET request to the home page
+        with self.client:
+            response = self.client.get('/')
 
-    return render_template("index.html", board=board, highscore=highscore, numplays=numplays)
+            # Assert that the 'board' key exists in the session
+            self.assertIn('board', session)
 
+            # Assert that 'highscore' and 'nplays' are not in the session
+            self.assertIsNone(session.get('highscore'))
+            self.assertIsNone(session.get('nplays'))
 
-@app.route("/word-check")
-def word_check():
-    """Check if the entered word is a valid word in the dictionary."""
+            # Assert that specific HTML elements are present in the response
+            self.assertIn(b'<p>High Score:', response.data)
+            self.assertIn(b'Score:', response.data)
+            self.assertIn(b'Seconds Left:', response.data)
 
-    # Retrieve the current Boggle board from the session & get the word to check from the request arguments
-    board = session["board"]
-    word = request.args["word"]
+    def test_valid_word(self):
+        """Test if word is valid by modifying the board in the session"""
 
-    # Check if the word is valid on the current board and in the dictionary
-    res = boggle_game.check_valid_word(board, word)
-    return jsonify({'result': res})
+        # Create a test client and modify the session to contain a specific board
+        with self.client as client:
+            with client.session_transaction() as sess:
+                sess['board'] = [["C", "A", "T", "T", "T"],
+                                 ["C", "A", "T", "T", "T"],
+                                 ["C", "A", "T", "T", "T"],
+                                 ["C", "A", "T", "T", "T"],
+                                 ["C", "A", "T", "T", "T"]]
 
+        # Use the test client to send a GET request to check a word
+        response = self.client.get('/check-word?word=cat')
 
-@app.route("/score", methods=["POST"])
-def score():
-    """Get current score, update the number of plays (numplays), & update the high score if appropriate."""
+        # Assert the result of the word check
+        self.assertEqual(response.json['result'], 'ok')
 
-    # Get the score from the JSON data in the request
-    score = request.json["score"]
-    highscore = session.get("highscore", 0)
-    numplays = session.get("numplays", 0)
+    def test_invalid_word(self):
+        """Test if word is in the dictionary"""
 
-    # Update the session's high score to the maximum of the current score and the existing high score and increment the number of plays by 1
-    session["highscore"] = max(score, highscore)
-    session["numplays"] = numplays + 1
+        # Send a GET request to the home page
+        self.client.get('/')
 
-    # Determine if the current score is a new high score & return the new high score
-    newHighscore = score > highscore
-    return jsonify(newHighscore=newHighscore)
+        # Use the test client to send a GET request to check an invalid word
+        response = self.client.get('/check-word?word=impossible')
+
+        # Assert the result of the word check
+        self.assertEqual(response.json['result'], 'not-on-board')
+
+    def non_english_word(self):
+        """Test if word is on the board"""
+
+        # Send a GET request to the home page
+        self.client.get('/')
+
+        # Use the test client to send a GET request to check a non-English word
+        response = self.client.get(
+            '/check-word?word=fsjdakfkldsfjdslkfjdlksf')
+
+        # Assert the result of the word check
+        self.assertEqual(response.json['result'], 'not-word')
